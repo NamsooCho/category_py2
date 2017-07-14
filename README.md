@@ -1,6 +1,6 @@
 Text Classification Engine using CNN & RNN
 
-use python3
+It uses python3
 
 command : python3 train.py
 	python2 predict.py
