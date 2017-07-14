@@ -1,3 +1,3 @@
-__pycache__
-checkpoints*
-trained_results*
+./__pycache__
+./checkpoints*
+./trained_results*
