@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import os
 import re
 import sys
@@ -11,10 +13,13 @@ import gensim as gs
 from pprint import pprint
 from collections import Counter
 from tensorflow.contrib import learn
+from dao import Dao
 
 logging.getLogger().setLevel(logging.INFO)
 
 def clean_str(s):
+	"""
+	형태소 분석을 통한 전처리를 하므로 이 기능을 필요 없음
 	s = re.sub(r"[^A-Za-z0-9:(),!?\'\`]", " ", s)
 	s = re.sub(r" : ", ":", s)
 	s = re.sub(r"\'s", " \'s", s)
@@ -30,6 +35,8 @@ def clean_str(s):
 	s = re.sub(r"\?", " \? ", s)
 	s = re.sub(r"\s{2,}", " ", s)
 	return s.strip().lower()
+	"""
+	return s
 
 def load_embeddings(vocabulary):
 	word_embeddings = {}
@@ -83,6 +90,7 @@ def batch_iter(data, batch_size, num_epochs, shuffle=True):
 			yield shuffled_data[start_index:end_index]
 
 def load_data(filename):
+	"""
 	df = pd.read_csv(filename, compression='zip')
 	selected = ['Category', 'Descript']
 	non_selected = list(set(df.columns) - set(selected))
@@ -90,22 +98,34 @@ def load_data(filename):
 	df = df.drop(non_selected, axis=1)
 	df = df.dropna(axis=0, how='any', subset=selected)
 	df = df.reindex(np.random.permutation(df.index))
+	"""
 
-	labels = sorted(list(set(df[selected[0]].tolist())))
+	x_text = []
+	y_label = []
+
+	dao = Dao()
+
+	rows = dao.GetAllData()
+	for row in rows:
+		x_text.append(row[0])
+		y_label.append(row[1])
+	dao.Close()
+
+	labels = sorted(list(set(y_label)))
 	num_labels = len(labels)
 	one_hot = np.zeros((num_labels, num_labels), int)
 	np.fill_diagonal(one_hot, 1)
 	label_dict = dict(zip(labels, one_hot))
 
-	x_raw= df[selected[1]].apply(lambda x: clean_str(x).split(' ')).tolist()
-	y_raw = df[selected[0]].apply(lambda y: label_dict[y]).tolist()
+	x_raw= list(map(lambda x: clean_str(x).split(' '), x_text))
+	y_raw = list(map(lambda y: label_dict[y], y_label))
 
 	x_raw = pad_sentences(x_raw)
 	vocabulary, vocabulary_inv = build_vocab(x_raw)
 
 	x = np.array([[vocabulary[word] for word in sentence] for sentence in x_raw])
 	y = np.array(y_raw)
-	return x, y, vocabulary, vocabulary_inv, df, labels
+	return x, y, vocabulary, vocabulary_inv, labels
 
 if __name__ == "__main__":
 	train_file = './data/train.csv.zip'

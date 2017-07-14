@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import os
 import sys
 import json
@@ -15,10 +17,10 @@ from sklearn.model_selection import train_test_split
 logging.getLogger().setLevel(logging.INFO)
 
 def train_cnn_rnn():
-	input_file = sys.argv[1]
-	x_, y_, vocabulary, vocabulary_inv, df, labels = data_helper.load_data(input_file)
+	input_file = ""
+	x_, y_, vocabulary, vocabulary_inv, labels = data_helper.load_data(input_file)
 
-	training_config = sys.argv[2]
+	training_config = 'training_config.json'
 	params = json.loads(open(training_config).read())
 
 	# Assign a 300 dimension vector to each word
@@ -44,7 +46,7 @@ def train_cnn_rnn():
 
 	graph = tf.Graph()
 	with graph.as_default():
-		session_conf = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
+		session_conf = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False, device_count = {'GPU': 1}) 
 		sess = tf.Session(config=session_conf)
 		with sess.as_default():
 			cnn_rnn = TextCNNRNN(
@@ -98,8 +100,8 @@ def train_cnn_rnn():
 					[global_step, cnn_rnn.loss, cnn_rnn.accuracy, cnn_rnn.num_correct, cnn_rnn.predictions], feed_dict)
 				return accuracy, loss, num_correct, predictions
 
-			saver = tf.train.Saver(tf.all_variables())
-			sess.run(tf.initialize_all_variables())
+			saver = tf.train.Saver(tf.global_variables())
+			sess.run(tf.global_variables_initializer())
 
 			# Training starts here
 			train_batches = data_helper.batch_iter(list(zip(x_train, y_train)), params['batch_size'], params['num_epochs'])
@@ -148,7 +150,8 @@ def train_cnn_rnn():
 	with open(trained_dir + 'labels.json', 'w') as outfile:
 		json.dump(labels, outfile, indent=4, ensure_ascii=False)
 
-	os.rename(path, trained_dir + 'best_model.ckpt')
+	os.rename(path + '.data-00000-of-00001', trained_dir + 'best_model.data-00000-of-00001')
+	os.rename(path + '.index', trained_dir + 'best_model.index')
 	os.rename(path + '.meta', trained_dir + 'best_model.meta')
 	shutil.rmtree(checkpoint_dir)
 	logging.critical('{} has been removed'.format(checkpoint_dir))
